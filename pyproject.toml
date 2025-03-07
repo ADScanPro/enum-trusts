@@ -23,4 +23,4 @@ classifiers = [
 ]
 
 [project.scripts]
-weakpass-lookup = "enum_trusts.main:main"
+enum-trusts = "enum_trusts.main:main"
