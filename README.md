@@ -18,7 +18,7 @@ A command-line tool to recursively enumerate Active Directory domain trust relat
 You can install Netexec directly from GitHub using:
 
 ```sh
-pip install git+https://github.com/Pennyw0rth/NetExec.git
+pipx install git+https://github.com/Pennyw0rth/NetExec.git
 ```
 
 On some systems, you might also have a system package available (e.g., via apt on Debian/Ubuntu):
