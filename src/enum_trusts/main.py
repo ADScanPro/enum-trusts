@@ -15,23 +15,23 @@ class TrustEnumerator:
         self.initial_pdc = pdc
         self.debug = False
         
-        # Estructuras para seguimiento
+        # Tracking structures
         self.seen_domains = set()
         self.domains_to_process = []
         self.trust_relationships = defaultdict(list)
         self.domain_controllers = {}
         
-        # Guardamos el DC inicial
+        # Save the initial DC
         self.domain_controllers[domain] = pdc
-        # El PDC inicial será nuestro servidor DNS
+        # The initial PDC will be used as our DNS server
         self.dns = pdc
 
     def get_domain_trusts(self, domain):
-        """Obtiene las relaciones de confianza para un dominio usando netexec"""
+        """Gets the trust relationships for a domain using netexec"""
         try:
             dc_ip = self.domain_controllers[domain]
             
-            # Construimos el comando de forma condicional según si se usa hash o contraseña
+            # Build the command conditionally based on whether a hash or password is used
             command = [
                 'nxc', 'ldap', dc_ip,
                 '-u', self.username,
@@ -43,7 +43,7 @@ class TrustEnumerator:
             command.extend(['-d', self.initial_domain, '-M', 'enum_trusts'])
             
             if self.debug:
-                print(f"[DEBUG] Ejecutando comando: {' '.join(command)}")
+                print(f"[DEBUG] Executing command: {' '.join(command)}")
             
             proc = subprocess.run(command, capture_output=True, text=True)
             
@@ -55,32 +55,32 @@ class TrustEnumerator:
                         if trust_info:
                             trusts.append(trust_info)
                             if self.debug:
-                                print(f"[DEBUG] Encontrada relación de confianza: {trust_info}")
+                                print(f"[DEBUG] Found trust relationship: {trust_info}")
                 return trusts
             else:
                 if self.debug:
-                    print(f"[DEBUG] Error en netexec: {proc.stderr}")
+                    print(f"[DEBUG] Error in netexec: {proc.stderr}")
                 return []
                 
         except Exception as e:
-            print(f"[-] Error obteniendo confianzas para {domain}: {str(e)}")
+            print(f"[-] Error obtaining trusts for {domain}: {str(e)}")
             if self.debug:
                 import traceback
                 print(traceback.format_exc())
             return []
 
     def parse_trust_line(self, line):
-        """Parsea una línea de salida de netexec para extraer información de confianza"""
+        """Parses a netexec output line to extract trust information"""
         try:
-            # Buscamos el patrón: dominio -> dirección -> tipo
+            # Look for the pattern: domain -> address -> type
             if ' -> ' not in line:
                 return None
             
-            # Extraer la parte después de ENUM_TRUSTS que contiene la información
+            # Extract the part after ENUM_TRUSTS that contains the information
             trust_info = line.split('ENUM_TRUSTS')[-1]
             trust_parts = [part.strip() for part in trust_info.split('->')]
             
-            # Encontrar el dominio (buscamos algo que termine en .local)
+            # Find the domain (searching for something ending with .local)
             domain_match = re.search(r'(\S+\.local)', trust_parts[0])
             if not domain_match:
                 return None
@@ -97,37 +97,37 @@ class TrustEnumerator:
             
         except Exception as e:
             if self.debug:
-                print(f"[DEBUG] Error parseando línea de confianza: {line}")
+                print(f"[DEBUG] Error parsing trust line: {line}")
                 print(f"[DEBUG] Error: {str(e)}")
             return None
 
     def find_domain_controller(self, domain):
         """
-        Encuentra el PDC de un dominio usando nslookup.
-        Retorna la IP del PDC si se encuentra, None en caso contrario.
+        Finds the PDC of a domain using nslookup.
+        Returns the IP of the PDC if found, otherwise None.
         """
         try:
-            # Consulta SRV para encontrar el PDC
+            # Query SRV to find the PDC
             pdc_query = f"nslookup -type=srv _ldap._tcp.pdc._msdcs.{domain} {self.dns}"
             result = subprocess.run(pdc_query, shell=True, capture_output=True, text=True)
             
-            # Buscar el hostname del PDC
+            # Look for the PDC hostname
             pdc_hostname_match = re.search(r"service = \d+ \d+ \d+ ([\w.-]+)", result.stdout)
             
             if pdc_hostname_match:
-                # Obtener el hostname sin el dominio
+                # Get the hostname without the domain
                 pdc_hostname = pdc_hostname_match.group(1).split('.')[0]
                 
-                # Resolver la IP del PDC
+                # Resolve the IP of the PDC
                 ip_query = f"nslookup {pdc_hostname}.{domain} {self.dns}"
                 ip_result = subprocess.run(ip_query, shell=True, capture_output=True, text=True)
                 
-                # Extraer la IP
+                # Extract the IP
                 ip_matches = re.findall(r"Address:\s+([\d.]+)", ip_result.stdout)
                 if ip_matches:
                     pdc_ip = ip_matches[-1]
                     if self.debug:
-                        print(f"[DEBUG] PDC encontrado para {domain}:")
+                        print(f"[DEBUG] PDC found for {domain}:")
                         print(f"[DEBUG] Hostname: {pdc_hostname}")
                         print(f"[DEBUG] IP: {pdc_ip}")
                     return pdc_ip
@@ -135,17 +135,17 @@ class TrustEnumerator:
             return None
             
         except Exception as e:
-            print(f"[-] Error buscando DC para {domain}: {str(e)}")
+            print(f"[-] Error searching for DC for {domain}: {str(e)}")
             return None
 
     def enumerate_trusts(self):
-        """Punto de entrada principal para la enumeración recursiva de confianzas"""
-        print(f"\n[*] Iniciando enumeración de confianzas desde {self.initial_domain}")
+        """Main entry point for recursive trust enumeration"""
+        print(f"\n[*] Starting trust enumeration from {self.initial_domain}")
         if self.hashes:
-            print(f"[*] Usando credenciales (hash NTLM): {self.username}@{self.initial_domain}")
+            print(f"[*] Using credentials (NTLM hash): {self.username}@{self.initial_domain}")
         else:
-            print(f"[*] Usando credenciales: {self.username}@{self.initial_domain}")
-        print(f"[*] PDC inicial: {self.initial_pdc}\n")
+            print(f"[*] Using credentials: {self.username}@{self.initial_domain}")
+        print(f"[*] Initial PDC: {self.initial_pdc}\n")
         
         self.domains_to_process.append(self.initial_domain)
         
@@ -155,17 +155,17 @@ class TrustEnumerator:
             if current_domain in self.seen_domains:
                 continue
                 
-            print(f"[+] Procesando dominio: {current_domain}")
+            print(f"[+] Processing domain: {current_domain}")
             self.seen_domains.add(current_domain)
             
             if current_domain not in self.domain_controllers:
                 dc = self.find_domain_controller(current_domain)
                 if not dc:
-                    print(f"[-] No se pudo encontrar un DC para {current_domain}")
+                    print(f"[-] Could not find a DC for {current_domain}")
                     continue
                 self.domain_controllers[current_domain] = dc
                 if self.debug:
-                    print(f"[DEBUG] Encontrado DC para {current_domain}: {dc}")
+                    print(f"[DEBUG] Found DC for {current_domain}: {dc}")
             
             trusts = self.get_domain_trusts(current_domain)
             
@@ -180,52 +180,52 @@ class TrustEnumerator:
                             self.domains_to_process.append(target_domain)
                     except KeyError as e:
                         if self.debug:
-                            print(f"[-] Error procesando confianza: {str(e)}")
+                            print(f"[DEBUG] Error processing trust: {str(e)}")
                         continue
 
     def print_results(self):
-        """Imprime un resumen de todas las relaciones de confianza encontradas"""
+        """Prints a summary of all found trust relationships"""
         print("\n" + "="*60)
-        print("RESUMEN DE RELACIONES DE CONFIANZA ENCONTRADAS")
+        print("SUMMARY OF FOUND TRUST RELATIONSHIPS")
         print("="*60)
         
         if not self.trust_relationships:
-            print("\n[-] No se encontraron relaciones de confianza.")
-            print("\nDominios procesados:", len(self.seen_domains))
+            print("\n[-] No trust relationships found.")
+            print("\nDomains processed:", len(self.seen_domains))
             return
         
         for domain in self.trust_relationships:
-            print(f"\nDominio: {domain}")
+            print(f"\nDomain: {domain}")
             print("-" * (len(domain) + 8))
             
             if not self.trust_relationships[domain]:
-                print("  No se encontraron relaciones de confianza")
+                print("  No trust relationships found")
                 continue
                 
             for trust in self.trust_relationships[domain]:
-                print(f"  → Dominio de confianza: {trust['partner']}")
-                print(f"    Dirección: {trust.get('direction', 'No especificada')}")
-                print(f"    Tipo: {trust.get('type', 'No especificado')}")
+                print(f"  → Trusted Domain: {trust['partner']}")
+                print(f"    Address: {trust.get('direction', 'Not specified')}")
+                print(f"    Type: {trust.get('type', 'Not specified')}")
         
-        print("\nDominios procesados:", len(self.seen_domains))
-        print("Dominios con relaciones de confianza:", len(self.trust_relationships))
+        print("\nDomains processed:", len(self.seen_domains))
+        print("Domains with trust relationships:", len(self.trust_relationships))
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Enumera recursivamente las relaciones de confianza de dominios Active Directory.'
+        description='Recursively enumerates Active Directory domain trust relationships.'
     )
-    parser.add_argument('-u', '--username', required=True, help='Nombre de usuario')
-    parser.add_argument('-p', '--password', required=False, help='Contraseña')
-    parser.add_argument('-H', '--hashes', required=False, help='Hash NTLM para la autenticación')
-    parser.add_argument('-d', '--domain', required=True, help='Nombre del dominio inicial')
-    parser.add_argument('-pdc', '--pdc', required=True, help='IP del controlador de dominio primario')
-    parser.add_argument('--debug', action='store_true', help='Activa mensajes de depuración')
+    parser.add_argument('-u', '--username', required=True, help='Username')
+    parser.add_argument('-p', '--password', required=False, help='Password')
+    parser.add_argument('-H', '--hashes', required=False, help='NTLM hash for authentication')
+    parser.add_argument('-d', '--domain', required=True, help='Initial domain name')
+    parser.add_argument('-pdc', '--pdc', required=True, help='Primary Domain Controller IP')
+    parser.add_argument('--debug', action='store_true', help='Enable debug messages')
     
     args = parser.parse_args()
 
-    # Validación: se requiere o la contraseña o el hash
+    # Validation: either password or hash must be provided
     if not args.password and not args.hashes:
-        parser.error("Debe especificar la contraseña (-p/--password) o el hash NTLM (-H/--hashes) para la autenticación.")
+        parser.error("You must specify either the password (-p/--password) or the NTLM hash (-H/--hashes) for authentication.")
 
     enumerator = TrustEnumerator(args.domain, args.username, args.password, args.pdc, hashes=args.hashes)
     enumerator.debug = args.debug
@@ -234,7 +234,7 @@ def main():
         enumerator.enumerate_trusts()
         enumerator.print_results()
     except KeyboardInterrupt:
-        print("\n[!] Enumeración interrumpida por el usuario")
+        print("\n[!] Enumeration interrupted by the user")
         sys.exit(1)
     except Exception as e:
         print(f"\n[-] Error: {str(e)}")
