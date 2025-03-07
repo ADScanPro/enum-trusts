@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enum-trusts"
+version = "0.1.0"
+description = "Recursively enumerates Active Directory domain trust relationships."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+  { name = "ADScan", email = "github@adscanpro.com" }
+]
+requires-python = ">=3.6"
+dependencies = [
+    "netexec @ git+https://github.com/Pennyw0rth/NetExec@main#egg=netexec"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+
+[project.scripts]
+weakpass-lookup = "enum_trusts.main:main"
