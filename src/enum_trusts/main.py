@@ -7,10 +7,11 @@ from collections import defaultdict
 import sys
 
 class TrustEnumerator:
-    def __init__(self, domain, username, password, pdc):
+    def __init__(self, domain, username, password, pdc, hashes=None):
         self.initial_domain = domain
         self.username = username
         self.password = password
+        self.hashes = hashes
         self.initial_pdc = pdc
         self.debug = False
         
@@ -30,13 +31,16 @@ class TrustEnumerator:
         try:
             dc_ip = self.domain_controllers[domain]
             
+            # Construimos el comando de forma condicional según si se usa hash o contraseña
             command = [
                 'nxc', 'ldap', dc_ip,
                 '-u', self.username,
-                '-p', self.password,
-                '-d', self.initial_domain,
-                '-M', 'enum_trusts'
             ]
+            if self.hashes:
+                command.extend(['-H', self.hashes])
+            else:
+                command.extend(['-p', self.password])
+            command.extend(['-d', self.initial_domain, '-M', 'enum_trusts'])
             
             if self.debug:
                 print(f"[DEBUG] Ejecutando comando: {' '.join(command)}")
@@ -137,7 +141,10 @@ class TrustEnumerator:
     def enumerate_trusts(self):
         """Punto de entrada principal para la enumeración recursiva de confianzas"""
         print(f"\n[*] Iniciando enumeración de confianzas desde {self.initial_domain}")
-        print(f"[*] Usando credenciales: {self.username}@{self.initial_domain}")
+        if self.hashes:
+            print(f"[*] Usando credenciales (hash NTLM): {self.username}@{self.initial_domain}")
+        else:
+            print(f"[*] Usando credenciales: {self.username}@{self.initial_domain}")
         print(f"[*] PDC inicial: {self.initial_pdc}\n")
         
         self.domains_to_process.append(self.initial_domain)
@@ -208,14 +215,19 @@ def main():
         description='Enumera recursivamente las relaciones de confianza de dominios Active Directory.'
     )
     parser.add_argument('-u', '--username', required=True, help='Nombre de usuario')
-    parser.add_argument('-p', '--password', required=True, help='Contraseña')
+    parser.add_argument('-p', '--password', required=False, help='Contraseña')
+    parser.add_argument('-H', '--hashes', required=False, help='Hash NTLM para la autenticación')
     parser.add_argument('-d', '--domain', required=True, help='Nombre del dominio inicial')
     parser.add_argument('-pdc', '--pdc', required=True, help='IP del controlador de dominio primario')
     parser.add_argument('--debug', action='store_true', help='Activa mensajes de depuración')
     
     args = parser.parse_args()
-    
-    enumerator = TrustEnumerator(args.domain, args.username, args.password, args.pdc)
+
+    # Validación: se requiere o la contraseña o el hash
+    if not args.password and not args.hashes:
+        parser.error("Debe especificar la contraseña (-p/--password) o el hash NTLM (-H/--hashes) para la autenticación.")
+
+    enumerator = TrustEnumerator(args.domain, args.username, args.password, args.pdc, hashes=args.hashes)
     enumerator.debug = args.debug
     
     try:
