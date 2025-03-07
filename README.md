@@ -15,13 +15,13 @@ A command-line tool to recursively enumerate Active Directory domain trust relat
 ### Via pipx (recommended)
 
 ```sh
-pipx install git+https://github.com/ADScan/enum-trusts.git
+pipx install git+https://github.com/ADScanPro/enum-trusts.git
 ```
 
 ### Via pip
 
 ```sh
-pip install git+https://github.com/ADScan/enum-trusts.git
+pip install git+https://github.com/ADScanPro/enum-trusts.git
 ```
 
 > **Note**  
