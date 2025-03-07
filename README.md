@@ -12,13 +12,30 @@ A command-line tool to recursively enumerate Active Directory domain trust relat
 
 ## Installation
 
-### Via pipx (recommended)
+### Prerequisite: Install Netexec
+
+**Important:** Before installing **enum-trusts**, ensure that **Netexec** is installed.  
+You can install Netexec directly from GitHub using:
+
+```sh
+pip install git+https://github.com/Pennyw0rth/NetExec.git
+```
+
+On some systems, you might also have a system package available (e.g., via apt on Debian/Ubuntu):
+
+```sh
+sudo apt install netexec
+```
+
+### Installing enum-trusts
+
+#### Via pipx (recommended)
 
 ```sh
 pipx install git+https://github.com/ADScanPro/enum-trusts.git
 ```
 
-### Via pip
+#### Via pip
 
 ```sh
 pip install git+https://github.com/ADScanPro/enum-trusts.git
