@@ -40,7 +40,7 @@ class TrustEnumerator:
                 command.extend(['-H', self.hashes])
             else:
                 command.extend(['-p', self.password])
-            command.extend(['-d', self.initial_domain, '-M', 'enum_trusts'])
+            command.extend(['-d', self.initial_domain, '--dc-list'])
             
             if self.debug:
                 print(f"[DEBUG] Executing command: {' '.join(command)}")
@@ -50,7 +50,7 @@ class TrustEnumerator:
             if proc.returncode == 0:
                 trusts = []
                 for line in proc.stdout.splitlines():
-                    if "ENUM_TRUSTS" in line and "->" in line:
+                    if "->" in line:
                         trust_info = self.parse_trust_line(line)
                         if trust_info:
                             trusts.append(trust_info)
@@ -72,29 +72,36 @@ class TrustEnumerator:
     def parse_trust_line(self, line):
         """Parses a netexec output line to extract trust information"""
         try:
-            # Look for the pattern: domain -> address -> type
-            if ' -> ' not in line:
+            # Si no hay flecha, no es una línea de trust
+            if '->' not in line:
                 return None
-            
-            # Extract the part after ENUM_TRUSTS that contains the information
-            trust_info = line.split('ENUM_TRUSTS')[-1]
-            trust_parts = [part.strip() for part in trust_info.split('->')]
-            
-            # Find the domain (searching for something ending with .local)
-            domain_match = re.search(r'(\S+\.local)', trust_parts[0])
-            if not domain_match:
+
+            # Dividimos toda la línea por '->'
+            parts = [p.strip() for p in line.split('->')]
+            # Debemos tener al menos 2 '->' para tener partner, direction y type
+            if len(parts) < 3:
                 return None
-            
-            partner = domain_match.group(1)
-            direction = trust_parts[1].strip()
-            trust_type = trust_parts[2].strip()
-            
+
+            # 'parts[0]' contiene todo lo anterior a la primera flecha.
+            # El dominio (partner) es la última palabra antes de esa flecha:
+            left = parts[0]
+            tokens = left.split()
+            if not tokens:
+                return None
+
+            # La última palabra puede llevar ':' al final; la quitamos
+            partner = tokens[-1].rstrip(':')
+
+            # Dirección y tipo vienen en parts[1] y parts[2]
+            direction = parts[1]
+            trust_type = parts[2]
+
             return {
                 'partner': partner,
                 'direction': direction,
                 'type': trust_type
             }
-            
+
         except Exception as e:
             if self.debug:
                 print(f"[DEBUG] Error parsing trust line: {line}")
