@@ -5,6 +5,7 @@ import subprocess
 import re
 from collections import defaultdict
 import sys
+import os.path
 
 class TrustEnumerator:
     def __init__(self, domain, username, password, pdc, hashes=None):
@@ -31,9 +32,13 @@ class TrustEnumerator:
         try:
             dc_ip = self.domain_controllers[domain]
             
+            # Check if the specific netexec path exists
+            netexec_path = "/root/.adscan/tool_venvs/netexec/venv/bin/nxc"
+            nxc_cmd = netexec_path if os.path.exists(netexec_path) else 'nxc'
+            
             # Build the command conditionally based on whether a hash or password is used
             command = [
-                'nxc', 'ldap', dc_ip,
+                nxc_cmd, 'ldap', dc_ip,
                 '-u', self.username,
             ]
             if self.hashes:
