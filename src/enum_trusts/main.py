@@ -45,7 +45,7 @@ class TrustEnumerator:
                 command.extend(['-H', self.hashes])
             else:
                 command.extend(['-p', self.password])
-            command.extend(['-d', self.initial_domain, '--dc-list'])
+            command.extend(['-d', self.initial_domain, '-M enum_trusts'])
             
             if self.debug:
                 print(f"[DEBUG] Executing command: {' '.join(command)}")
