@@ -27,7 +27,7 @@ class TrustEnumerator:
         # The initial PDC will be used as our DNS server
         self.dns = pdc
 
-    def get_domain_trusts(self, domain):
+    def get_domain_trusts_old(self, domain):
         """Gets the trust relationships for a domain using netexec"""
         try:
             dc_ip = self.domain_controllers[domain]
@@ -45,7 +45,7 @@ class TrustEnumerator:
                 command.extend(['-H', self.hashes])
             else:
                 command.extend(['-p', self.password])
-            command.extend(['-d', self.initial_domain, '-M enum_trusts'])
+            command.extend(['-d', self.initial_domain, '--dc-list'])
             
             if self.debug:
                 print(f"[DEBUG] Executing command: {' '.join(command)}")
@@ -56,6 +56,49 @@ class TrustEnumerator:
                 trusts = []
                 for line in proc.stdout.splitlines():
                     if "->" in line:
+                        trust_info = self.parse_trust_line(line)
+                        if trust_info:
+                            trusts.append(trust_info)
+                            if self.debug:
+                                print(f"[DEBUG] Found trust relationship: {trust_info}")
+                return trusts
+            else:
+                if self.debug:
+                    print(f"[DEBUG] Error in netexec: {proc.stderr}")
+                return []
+                
+        except Exception as e:
+            print(f"[-] Error obtaining trusts for {domain}: {str(e)}")
+            if self.debug:
+                import traceback
+                print(traceback.format_exc())
+            return []
+
+    def get_domain_trusts(self, domain):
+        """Gets the trust relationships for a domain using netexec"""
+        try:
+            dc_ip = self.domain_controllers[domain]
+            
+            # Build the command conditionally based on whether a hash or password is used
+            command = [
+                'nxc', 'ldap', dc_ip,
+                '-u', self.username,
+            ]
+            if self.hashes:
+                command.extend(['-H', self.hashes])
+            else:
+                command.extend(['-p', self.password])
+            command.extend(['-d', self.initial_domain, '-M', 'enum_trusts'])
+            
+            if self.debug:
+                print(f"[DEBUG] Executing command: {' '.join(command)}")
+            
+            proc = subprocess.run(command, capture_output=True, text=True)
+            
+            if proc.returncode == 0:
+                trusts = []
+                for line in proc.stdout.splitlines():
+                    if "ENUM_TRUSTS" in line and "->" in line:
                         trust_info = self.parse_trust_line(line)
                         if trust_info:
                             trusts.append(trust_info)
