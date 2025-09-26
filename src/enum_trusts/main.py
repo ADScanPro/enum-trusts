@@ -27,7 +27,7 @@ class TrustEnumerator:
         # The initial PDC will be used as our DNS server
         self.dns = pdc
 
-    def get_domain_trusts_old(self, domain):
+    def get_domain_trusts(self, domain):
         """Gets the trust relationships for a domain using netexec"""
         try:
             dc_ip = self.domain_controllers[domain]
@@ -74,7 +74,7 @@ class TrustEnumerator:
                 print(traceback.format_exc())
             return []
 
-    def get_domain_trusts(self, domain):
+    def get_domain_trusts_old(self, domain):
         """Gets the trust relationships for a domain using netexec"""
         try:
             dc_ip = self.domain_controllers[domain]
