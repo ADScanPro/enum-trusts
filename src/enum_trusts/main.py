@@ -254,8 +254,12 @@ class TrustEnumerator:
             return
         
         for domain in self.trust_relationships:
+            # Get the PDC IP for this domain
+            pdc_ip = self.domain_controllers.get(domain, "Unknown")
+            
             print(f"\nDomain: {domain}")
             print("-" * (len(domain) + 8))
+            print(f"  PDC IP: {pdc_ip}")
             
             if not self.trust_relationships[domain]:
                 print("  No trust relationships found")
